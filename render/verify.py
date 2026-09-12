@@ -65,14 +65,14 @@ check("true->mag correction is applied", abs(a - b) > 1.0,
 
 # ---- 4. rendered image -----------------------------------------------
 img = Image.open(CARD).convert("RGB")
-check("canvas is 600x400", img.size == (600, 400), str(img.size))
+check(f"canvas is {rd.W}x{rd.H}", img.size == (rd.W, rd.H), str(img.size))
 colors = {c for _, c in img.getcolors(maxcolors=1 << 24)}
 illegal = colors - set(rd.PALETTE)
 check("only legal Spectra 6 inks", not illegal, str(illegal) if illegal else
       f"{len(colors)} of 6 used")
 
 # Color coverage drives refresh time, so keep an eye on it.
-total = 600 * 400
+total = rd.W * rd.H
 chroma = sum(n for n, c in img.getcolors(maxcolors=1 << 24)
              if c not in (rd.K, rd.WH))
 check("chromatic coverage under 20%", chroma / total < 0.20,
@@ -88,7 +88,7 @@ check("frequencies formatted with a decimal",
       all("." in rd.fmt_mhz(f["mhz"]) for f in prim))
 # Nothing should touch the last two pixel rows, or text is clipped off-panel.
 px = img.load()
-edge = {px[x, y] for y in (398, 399) for x in range(600)}
+edge = {px[x, y] for y in (rd.H - 2, rd.H - 1) for x in range(rd.W)}
 check("no content clipped at bottom edge", edge == {rd.WH}, str(edge))
 
 print()

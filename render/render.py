@@ -1,12 +1,13 @@
-"""Render the N3005Q flight board to a 600x400 six-color PNG.
+"""Render the N3005Q flight board to a 400x600 (portrait) six-color PNG.
 
-Layout bands (600x400):
-  0-40    header: tail, type, station, flight category, battery, obs time
-  46-158  density altitude hero  |  current weather column
-  168-248 density altitude forecast, next 12 hours
-  257-306 runways, favored first, with wind components
-  316-338 TFR / NOTAM line
-  341-397 bottom band: frequencies, or currency chips if config says so
+Layout bands (400x600):
+  0-40    header: tail, station, battery, flight category, obs time
+  48-160  density altitude hero
+  172-262 current weather
+  274-350 density altitude forecast, next 12 hours
+  362-456 runways, 2x2, favored first, with wind components
+  468-516 TFR line, NOTAM line
+  524-594 bottom band: frequencies, or currency chips if config says so
 
 Outputs:
   card_device.png  -- nominal driver primaries, exactly 6 colors
@@ -26,7 +27,9 @@ from PIL import Image, ImageDraw, ImageFont
 
 import aviation as av
 
-W, H = 600, 400
+W, H = 400, 600
+
+BATTERY_SLOT = (146, 8, 198, 32)  # firmware draws into this box; keep in sync
 
 K = (0, 0, 0)
 WH = (255, 255, 255)
@@ -39,7 +42,7 @@ PALETTE = [K, WH, R, Y, B, G]
 INK = {K: (40, 40, 42), WH: (232, 230, 221), R: (150, 48, 44),
        Y: (201, 168, 62), B: (52, 70, 122), G: (62, 106, 78)}
 
-FD = "/usr/share/fonts/truetype/dejavu"
+FD = os.environ.get("N3005Q_FONTS", "/usr/share/fonts/truetype/dejavu")
 
 
 def font(name, size):
@@ -80,6 +83,22 @@ def fit(d, s, f, max_w, sep=" "):
     while s and d.textlength(s + "\u2026", font=f) > max_w:
         s = s[:-1]
     return s + "\u2026" if s else ""
+
+
+def wrap(d, s, f, max_w, sep, max_lines):
+    """Greedy wrap on separator boundaries; the last line is fit() if it overflows."""
+    lines, cur = [], ""
+    for part in s.split(sep):
+        cand = cur + sep + part if cur else part
+        if not cur or d.textlength(cand, font=f) <= max_w:
+            cur = cand
+        else:
+            lines.append(cur)
+            cur = part
+    lines.append(cur)
+    if len(lines) > max_lines:
+        lines = lines[:max_lines - 1] + [sep.join(lines[max_lines - 1:])]
+    return [fit(d, ln, f, max_w, sep) for ln in lines]
 
 
 def da_band(da, th):
@@ -135,18 +154,20 @@ def draw_header(d, wx, cfg, battery_pct):
     ac = cfg["aircraft"]
     d.rectangle([0, 0, W, 40], fill=K)
     text(d, (14, 20), ac["tail"], F_H1, WH, anchor="lm")
-    sub = f'{ac["type"]}  ·  {wx["icao"]} {ac["home_name"]}'
-    text(d, (106, 21), fit(d, sub, F_TINY, 178), F_TINY, WH, anchor="lm")
-    # BATTERY_SLOT x 292..344, y 8..32. Left black on purpose: the firmware
-    # draws the battery percentage here after decoding the PNG.
+    tw = d.textlength(ac["tail"], font=F_H1)
+    text(d, (22 + tw, 21), wx["icao"], F_LABEL, WH, anchor="lm")
+    # BATTERY_SLOT is left black on purpose: the firmware draws the battery
+    # percentage there after decoding the PNG.
+    bx0, by0, bx1, by1 = BATTERY_SLOT
 
     cat = wx["flt_cat"]
     cat_col = {"VFR": G, "MVFR": B, "IFR": R, "LIFR": R}.get(cat, Y)
-    d.rectangle([350, 8, 408, 32], fill=cat_col)
-    text(d, (379, 21), cat, F_VAL, K, anchor="mm")
+    d.rectangle([bx1 + 8, 8, bx1 + 66, 32], fill=cat_col)
+    text(d, (bx1 + 37, 21), cat, F_VAL, K, anchor="mm")
 
     if battery_pct is not None:      # local preview only; CI leaves it blank
-        text(d, (318, 21), f"{battery_pct}%", F_LABEL, WH, anchor="mm")
+        text(d, ((bx0 + bx1) // 2, 21), f"{battery_pct}%", F_LABEL, WH,
+             anchor="mm")
     stamp = wx["obs_time"].strftime("%d %b %H%MZ").upper()
     text(d, (W - 14, 21), stamp, F_LABEL, WH, anchor="rm")
 
@@ -155,25 +176,27 @@ def draw_hero(d, wx, cfg, y):
     ac, th = cfg["aircraft"], cfg["thresholds"]
     da = wx["density_alt_ft"]
     text(d, (14, y), "DENSITY ALTITUDE  ·  NOW", F_LABEL, K)
+    lw = d.textlength("DENSITY ALTITUDE  ·  NOW", font=F_LABEL)
+    text(d, (W - 14, y), fit(d, ac["type"], F_LABEL, W - 40 - lw), F_LABEL, K,
+         anchor="ra")
 
     da_s = f"{da:,.0f}"
     text(d, (12, y + 10), da_s, F_HERO, K)
     hw = d.textlength(da_s, font=F_HERO)
     text(d, (18 + hw, y + 56), "FT", F_HERO_UNIT, K, anchor="ls")
-    d.rectangle([12, y + 62, 12 + hw + 44, y + 70], fill=da_band(da, th))
+    d.rectangle([12, y + 62, W - 12, y + 70], fill=da_band(da, th))
 
     text(d, (14, y + 78),
-         f'PA {wx["pressure_alt_ft"]:,.0f}    ISA {wx["isa_dev_c"]:+.0f}°C'
-         f'    σ {wx["sigma"]:.3f}', F_VAL_SM, K)
+         f'PA {wx["pressure_alt_ft"]:,.0f}   ISA {wx["isa_dev_c"]:+.0f}°C'
+         f'   σ {wx["sigma"]:.3f}', F_VAL_SM, K)
     grf = av.ground_roll_factor(da, ac["engine_turbocharged"])
-    text(d, (14, y + 98), f"~{grf:.2f}x SL ROLL · EST ONLY, USE THE POH",
+    text(d, (14, y + 99), f"~{grf:.2f}x SL ROLL · EST ONLY, USE THE POH",
          F_TINY, K)
 
 
-def draw_wx_column(d, wx, cfg, y):
+def draw_wx_rows(d, wx, cfg, y):
     th = cfg["thresholds"]
-    cx = 316
-    d.line([cx - 18, y - 2, cx - 18, y + 106], fill=K, width=2)
+    vx = 138
 
     gust = wx["wgst"]
     windy = (wx["wspd"] >= th["wind_alert_kt"]
@@ -187,20 +210,20 @@ def draw_wx_column(d, wx, cfg, y):
             ("ALTIMETER", f'{wx["altim_inhg"]:.2f}"', False)]
     ry = y
     for label, val, hot in rows:
-        text(d, (cx, ry + 3), label, F_LABEL, K)
+        text(d, (14, ry + 3), label, F_LABEL, K)
+        val = fit(d, val, F_VAL_SM, W - 14 - vx)
         if hot:
             vw = d.textlength(val, font=F_VAL_SM)
-            d.rectangle([cx + 100, ry - 3, cx + 111 + vw, ry + 20], fill=Y,
+            d.rectangle([vx - 6, ry - 3, vx + 5 + vw, ry + 20], fill=Y,
                         outline=K, width=1)
-        text(d, (cx + 106, ry), val, F_VAL_SM, K)
-        ry += 27
+        text(d, (vx, ry), val, F_VAL_SM, K)
+        ry += 23
 
 
 def draw_da_forecast(d, fc, cfg, y):
     """Hourly DA bars. The afternoon peak is the number that matters in Vegas."""
     th = cfg["thresholds"]
-    text(d, (14, y), "DENSITY ALTITUDE  ·  NEXT 12 HOURS  (NWS)",
-         F_LABEL, K)
+    text(d, (14, y), "DA  ·  NEXT 12 HR  (NWS)", F_LABEL, K)
     if not fc:
         text(d, (14, y + 22), "forecast unavailable", F_VAL_SM, K)
         return
@@ -209,12 +232,12 @@ def draw_da_forecast(d, fc, cfg, y):
     text(d, (W - 14, y), f'PEAK {peak["da_ft"]:,.0f} FT AT '
          f'{peak["time"].strftime("%H%M")}L', F_LABEL, K, anchor="ra")
 
-    x0, x1, top, bot = 14, W - 52, y + 18, y + 66
+    x0, x1, top, bot = 14, W - 42, y + 18, y + 58
     # Adaptive ceiling so a mild day still shows shape, floored so the
     # threshold lines stay on screen.
     scale = max(peak["da_ft"] * 1.25, th["da_caution_ft"] * 1.15)
     slot = (x1 - x0) / len(fc)
-    bw = slot - 4
+    bw = slot - 3
 
     def ypos(v):
         return bot - int((bot - top) * min(1.0, v / scale))
@@ -236,39 +259,41 @@ def draw_da_forecast(d, fc, cfg, y):
         for gx in range(x0, x1, 8):
             d.line([gx, ly, gx + 3, ly], fill=K, width=2)
         d.rectangle([x1 + 4, ly - 6, x1 + 15, ly + 5], fill=col, outline=K)
-        text(d, (x1 + 19, ly - 6), f"{thresh // 1000}k", F_MICRO, K)
+        text(d, (x1 + 18, ly - 6), f"{thresh // 1000}k", F_MICRO, K)
 
 
-def draw_runway_strip(d, wx, cfg, y):
-    """One box per runway end, favored first. Each end colored by its own
-    crosswind against the demonstrated value, so usability reads at a glance."""
+def draw_runway_grid(d, wx, cfg, y):
+    """One box per runway end, favored first, in a 2x2 grid. Each end colored
+    by its own crosswind against the demonstrated value."""
     ac = cfg["aircraft"]
     rwys = av.runway_analysis(wx, ac)
     limit = ac["max_demo_crosswind_kt"]
     text(d, (14, y), "RUNWAYS  ·  FAVORED FIRST", F_LABEL, K)
-    text(d, (W - 14, y), f"TRUE->MAG 14E · DEMO XW {limit} KT",
+    text(d, (W - 14, y + 1), f'MAG {ac["magvar_east_deg"]}E · DEMO XW {limit} KT',
          F_MICRO, K, anchor="ra")
     if not rwys:
         text(d, (14, y + 18), "calm / variable", F_VAL_SM, K)
         return
 
-    bw, gap, by = 138, 8, y + 16
+    gap = 8
+    bw, bh = (W - 24 - gap) // 2, 36
     for i, r in enumerate(rwys[:4]):
-        x = 12 + i * (bw + gap)
+        x = 12 + (i % 2) * (bw + gap)
+        by = y + 17 + (i // 2) * (bh + 6)
         peak = r["gust_crosswind"] or r["crosswind"]
         col = R if peak > limit else Y if r["crosswind"] > limit * 0.7 else G
-        d.rectangle([x, by, x + bw, by + 38], fill=WH, outline=K,
+        d.rectangle([x, by, x + bw, by + bh], fill=WH, outline=K,
                     width=3 if i == 0 else 1)
-        d.rectangle([x + 1, by + 1, x + 41, by + 37], fill=col)
-        text(d, (x + 21, by + 19), r["id"], F_RWY, K, anchor="mm")
+        d.rectangle([x + 1, by + 1, x + 41, by + bh - 1], fill=col)
+        text(d, (x + 21, by + bh // 2), r["id"], F_RWY, K, anchor="mm")
 
         hw = r["headwind"]
         hw_s = (f"HW {hw:.0f}" if hw >= 0 else f"TW {abs(hw):.0f}") + " KT"
         xw_s = f'XW {r["crosswind"]:.0f}'
         if r["gust_crosswind"]:
             xw_s += f' G{r["gust_crosswind"]:.0f}'
-        text(d, (x + 49, by + 4), hw_s, F_VAL_SM, K)
-        text(d, (x + 49, by + 23), xw_s, F_TINY, K)
+        text(d, (x + 49, by + 2), hw_s, F_VAL_SM, K)
+        text(d, (x + 49, by + 20), xw_s, F_TINY, K)
 
 
 TFR_ABBREV = {"SPACE OPERATIONS": "SPACE OPS", "AIR SHOWS": "AIRSHOW",
@@ -280,8 +305,15 @@ def _tfr_kind(t):
     return TFR_ABBREV.get(k, k)
 
 
-def draw_tfr_line(d, tfrs, notams, cfg, y):
-    state = cfg["aircraft"]["tfr_state"]
+def _tag_line(d, y, tag, col, body):
+    d.rectangle([12, y, 74, y + 22], fill=col, outline=K, width=2)
+    text(d, (43, y + 11), tag, F_LABEL, K, anchor="mm")
+    text(d, (82, y + 3), fit(d, body, F_VAL_SM, W - 14 - 82, ", "), F_VAL_SM, K)
+
+
+def draw_tfr_notam(d, tfrs, notams, cfg, y):
+    ac = cfg["aircraft"]
+    state = ac["tfr_state"]
     if tfrs is None:
         body, col = "FETCH FAILED", Y
     elif not tfrs:
@@ -289,14 +321,13 @@ def draw_tfr_line(d, tfrs, notams, cfg, y):
     else:
         kinds = sorted({_tfr_kind(t) for t in tfrs})
         body, col = f'{len(tfrs)} IN {state} · ' + ", ".join(kinds), Y
+    _tag_line(d, y, "TFR", col, body)
 
-    d.rectangle([12, y, 58, y + 22], fill=col, outline=K, width=2)
-    text(d, (35, y + 11), "TFR", F_LABEL, K, anchor="mm")
-
-    note = "NOTAM KEY NOT SET" if notams is None else f"{len(notams)} NOTAMS"
-    avail = (W - 30 - d.textlength(note, font=F_TINY)) - 66
-    text(d, (66, y + 3), fit(d, body, F_VAL_SM, avail, ", "), F_VAL_SM, K)
-    text(d, (W - 14, y + 6), note, F_TINY, K, anchor="ra")
+    if notams is None:
+        _tag_line(d, y + 26, "NOTAM", Y, "KEY NOT SET")
+    else:
+        _tag_line(d, y + 26, "NOTAM", WH,
+                  f'{len(notams)} ACTIVE AT {ac["home_icao"]}')
 
 
 def fmt_mhz(v):
@@ -314,66 +345,71 @@ def draw_frequencies(d, cfg, y):
         text(d, (14, y), "no frequencies configured", F_VAL_SM, K)
         return
 
-    bw, gap = 138, 8
+    gap = 6
+    bw = (W - 24 - 3 * gap) // 4
     for i, f in enumerate(prim[:4]):
         x = 12 + i * (bw + gap)
         d.rectangle([x, y, x + bw, y + 38], fill=WH, outline=K, width=2)
         d.rectangle([x, y, x + bw, y + 15], fill=K)
-        text(d, (x + bw / 2, y + 7), f["label"], F_CHIP_L, WH, anchor="mm")
-        text(d, (x + bw / 2, y + 27), fmt_mhz(f["mhz"]), F_CHIP_V, K,
+        text(d, (x + bw / 2, y + 7), fit(d, f["label"], F_CHIP_L, bw - 6),
+             F_CHIP_L, WH, anchor="mm")
+        text(d, (x + bw / 2, y + 27), fmt_mhz(f["mhz"]), F_VAL, K,
              anchor="mm")
 
+    sep = "  ·  "
     extras = fq.get("extras", "")
     ver = fq.get("verified", "")
     if ver:
-        extras = (extras + "   ·   " if extras else "") + f"VERIFIED {ver}"
-    if extras:
-        text(d, (14, y + 42), fit(d, extras, F_MICRO, W - 28, "  ·  "),
-             F_MICRO, K)
+        extras = (extras + sep if extras else "") + f"VERIFIED {ver}"
+    for i, ln in enumerate(wrap(d, extras, F_MICRO, W - 28, sep, 2)):
+        text(d, (14, y + 43 + i * 15), ln, F_MICRO, K)
 
 
 def draw_chips(d, chips, y):
-    cw, ch, gap = 186, 51, 8
+    gap = 8
+    cw, ch = (W - 24 - gap) // 2, 51
     for i, c in enumerate(chips):
-        x = 12 + i * (cw + gap)
+        x = 12 + (i % 2) * (cw + gap)
+        cy = y + (i // 2) * (ch + 6)
+        if cy + ch > H - 4:
+            break
         expired = c["color"] == R
-        d.rectangle([x, y, x + cw, y + ch], fill=R if expired else WH,
+        d.rectangle([x, cy, x + cw, cy + ch], fill=R if expired else WH,
                     outline=K, width=2)
-        d.rectangle([x + 2, y + 2, x + 12, y + ch - 2], fill=c["color"])
+        d.rectangle([x + 2, cy + 2, x + 12, cy + ch - 2], fill=c["color"])
         fg = WH if expired else K
         subw = d.textlength(c["sub"], font=F_CHIP_L)
-        text(d, (x + 19, y + 6),
+        text(d, (x + 19, cy + 6),
              fit(d, c["label"], F_CHIP_L, cw - 34 - subw), F_CHIP_L, fg)
-        text(d, (x + cw - 8, y + 6), c["sub"], F_CHIP_L, fg, anchor="ra")
-        text(d, (x + 19, y + 24), c["value"], F_CHIP_V, fg)
+        text(d, (x + cw - 8, cy + 6), c["sub"], F_CHIP_L, fg, anchor="ra")
+        text(d, (x + 19, cy + 24), c["value"], F_CHIP_V, fg)
 
 
 # ---------------------------------------------------------------- card
-BATTERY_SLOT = (292, 8, 344, 32)  # firmware draws into this box
-
-
 def render(wx, fc, tfrs, notams, cfg, now, battery_pct=None):
     img = Image.new("RGB", (W, H), WH)
     d = ImageDraw.Draw(img)
 
     draw_header(d, wx, cfg, battery_pct)
-    draw_hero(d, wx, cfg, 46)
-    draw_wx_column(d, wx, cfg, 50)
+    draw_hero(d, wx, cfg, 48)
 
-    d.line([12, 162, W - 12, 162], fill=K, width=2)
-    draw_da_forecast(d, fc, cfg, 168)
+    d.line([12, 166, W - 12, 166], fill=K, width=2)
+    draw_wx_rows(d, wx, cfg, 174)
 
-    d.line([12, 252, W - 12, 252], fill=K, width=2)
-    draw_runway_strip(d, wx, cfg, 257)
+    d.line([12, 268, W - 12, 268], fill=K, width=2)
+    draw_da_forecast(d, fc, cfg, 274)
 
-    d.line([12, 312, W - 12, 312], fill=K, width=2)
-    draw_tfr_line(d, tfrs, notams, cfg, 316)
+    d.line([12, 356, W - 12, 356], fill=K, width=2)
+    draw_runway_grid(d, wx, cfg, 362)
+
+    d.line([12, 462, W - 12, 462], fill=K, width=2)
+    draw_tfr_notam(d, tfrs, notams, cfg, 468)
 
     if cfg.get("bottom_band", "frequencies") == "currency":
         draw_chips(d, build_chips(cfg, now)[:cfg["thresholds"]["chips_shown"]],
-                   345)
+                   524)
     else:
-        draw_frequencies(d, cfg, 341)
+        draw_frequencies(d, cfg, 524)
     return img
 
 

@@ -23,6 +23,12 @@
 
 #include "config.h"
 
+// Portrait: 400 wide x 600 tall. 0 and 2 are the two upright portrait
+// orientations (180 degrees apart); override in config.h if it is upside down.
+#ifndef DISPLAY_ROTATION
+#define DISPLAY_ROTATION 0
+#endif
+
 // Mozilla root bundle shipped with the ESP32 Arduino core.
 extern const uint8_t rootca_crt_bundle_start[] asm("_binary_x509_crt_bundle_start");
 
@@ -32,7 +38,8 @@ RTC_DATA_ATTR static uint32_t rtcFailCount = 0;
 RTC_DATA_ATTR static uint32_t rtcWakeCount = 0;
 
 // The server leaves this box black on purpose; we draw the battery into it.
-static const int BAT_X = 292, BAT_Y = 8, BAT_W = 52, BAT_H = 24;
+// Must match BATTERY_SLOT in render/render.py.
+static const int BAT_X = 146, BAT_Y = 8, BAT_W = 52, BAT_H = 24;
 
 static M5Canvas canvas(&M5.Display);
 
@@ -124,11 +131,12 @@ static void drawBattery() {
 }
 
 static void drawBanner(const char *msg, uint16_t bg) {
-  canvas.fillRect(0, 372, 600, 28, bg);
-  canvas.drawRect(0, 372, 600, 28, TFT_BLACK);
+  const int w = canvas.width(), y = canvas.height() - 28;
+  canvas.fillRect(0, y, w, 28, bg);
+  canvas.drawRect(0, y, w, 28, TFT_BLACK);
   canvas.setTextColor(TFT_BLACK, bg);
   canvas.setTextDatum(middle_center);
-  canvas.drawString(msg, 300, 386);
+  canvas.drawString(msg, w / 2, y + 14);
 }
 
 // ---------------------------------------------------------------- fetch
@@ -216,6 +224,7 @@ void setup() {
   auto cfg = M5.config();
   cfg.clear_display = false;     // never flash the panel white on boot
   M5.begin(cfg);
+  M5.Display.setRotation(DISPLAY_ROTATION);
   Serial.begin(115200);
   rtcWakeCount++;
   Serial.printf("\n=== wake %u (fails %u) ===\n", rtcWakeCount, rtcFailCount);
@@ -228,8 +237,9 @@ void setup() {
       canvas.fillSprite(TFT_WHITE);
       canvas.setTextColor(TFT_BLACK, TFT_WHITE);
       canvas.setTextDatum(middle_center);
-      canvas.drawString("NO WIFI", 300, 180);
-      canvas.drawString("card may be out of date", 300, 210);
+      canvas.drawString("NO WIFI", canvas.width() / 2, canvas.height() / 2 - 15);
+      canvas.drawString("card may be out of date", canvas.width() / 2,
+                        canvas.height() / 2 + 15);
       M5.Display.setEpdMode(epd_mode_t::epd_quality);
       canvas.pushSprite(0, 0);
       rtcFailCount = 0;          // do not repaint this every wake
@@ -272,7 +282,7 @@ void setup() {
     long age = (long)(now - res.lastModified) / 60;
     Serial.printf("image age %ld min\n", age);
     if (age > STALE_AFTER_MIN) {
-      drawBanner("DATA STALE -- renderer has not updated", TFT_YELLOW);
+      drawBanner("DATA STALE -- renderer not updating", TFT_YELLOW);
     }
   }
 
