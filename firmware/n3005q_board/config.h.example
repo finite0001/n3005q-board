@@ -1,0 +1,34 @@
+// Copy to config.h and fill in. config.h is gitignored: do not commit wifi
+// credentials.
+#pragma once
+
+#define WIFI_SSID       "your-ssid"
+#define WIFI_PASSWORD   "your-password"
+
+// Where the rendered card lives. Must be HTTPS.
+#define CARD_URL        "https://your-project.vercel.app/card.png"
+
+// POSIX TZ string. This one is US Pacific with correct DST rules.
+#define TZ_STRING       "PST8PDT,M3.2.0,M11.1.0"
+
+// Wake cadence. The panel refresh is the expensive part (15-30s), so the
+// device asks the server for a new image often but only repaints when the
+// bytes actually changed (HTTP ETag / 304).
+#define DAY_START_HOUR      5     // local
+#define DAY_END_HOUR        21    // local
+#define DAY_INTERVAL_MIN    30
+#define NIGHT_INTERVAL_MIN  120
+
+// If the served image is older than this, overlay a STALE banner. Catches a
+// dead CI job that leaves a correct-looking but old card on the panel.
+#define STALE_AFTER_MIN     150
+
+// Retry budget within a single wake.
+#define WIFI_TIMEOUT_MS     20000
+#define HTTP_TIMEOUT_MS     20000
+#define MAX_PNG_BYTES       262144   // 12KB typical; generous ceiling
+
+// After this many consecutive failed wakes, repaint with an OFFLINE banner.
+// Until then the panel keeps showing the last good card, which is the right
+// default for e-ink: the old card stays readable with zero power.
+#define OFFLINE_AFTER_FAILS 3

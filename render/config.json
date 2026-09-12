@@ -1,0 +1,94 @@
+{
+  "_comment": "All dates ISO. Everything here is DATA, not code. Edit freely; the renderer never hardcodes your dates.",
+  "aircraft": {
+    "tail": "N3005Q",
+    "type": "PA28RT-201T",
+    "engine_turbocharged": true,
+    "home_icao": "KVGT",
+    "home_name": "N LAS VEGAS",
+    "tach_hours": 2187.4,
+    "magvar_east_deg": 14,
+    "runways": [
+      {
+        "id": "07",
+        "mag": 74
+      },
+      {
+        "id": "25",
+        "mag": 254
+      },
+      {
+        "id": "12",
+        "mag": 120
+      },
+      {
+        "id": "30",
+        "mag": 300
+      }
+    ],
+    "max_demo_crosswind_kt": 17,
+    "lat": 36.212,
+    "lon": -115.194,
+    "tfr_state": "NV"
+  },
+  "pilot": {
+    "flight_review_due": "2027-04-30",
+    "medical_due": "2027-02-28",
+    "medical_class": "3rd",
+    "ifr_currency_due": "2026-11-30",
+    "night_currency_due": "2026-10-04",
+    "pax_currency_due": "2026-12-01"
+  },
+  "maintenance": {
+    "annual_due": "2027-03-31",
+    "transponder_static_due": "2027-08-31",
+    "elt_battery_due": "2028-01-31",
+    "oil_change_due_tach": 2212.0,
+    "next_100hr_tach": 2245.0
+  },
+  "thresholds": {
+    "days_warn": 30,
+    "tach_warn": 5.0,
+    "da_caution_ft": 4000,
+    "da_alert_ft": 6000,
+    "gust_factor_warn_kt": 10,
+    "wind_alert_kt": 25,
+    "chips_shown": 3
+  },
+  "faa_api": {
+    "_comment": "Free key from https://api.faa.gov -> NOTAM API. Blank = NOTAM panel shows 'key not set'.",
+    "client_id": "",
+    "client_secret": ""
+  },
+  "fuel": {
+    "_comment": "No free fuel-price API exists. Update by hand when you top off.",
+    "self_serve_100ll": null,
+    "full_serve_100ll": null,
+    "as_of": null
+  },
+  "frequencies": {
+    "_comment": "From OurAirports (CC0). Community data, can lag the Chart Supplement. Verify before relying on it in the airplane.",
+    "primary": [
+      {
+        "label": "ATIS",
+        "mhz": "118.05"
+      },
+      {
+        "label": "CLNC DEL",
+        "mhz": "124"
+      },
+      {
+        "label": "GROUND",
+        "mhz": "121.7"
+      },
+      {
+        "label": "TOWER",
+        "mhz": "125.7"
+      }
+    ],
+    "extras": "TWR 119.15 (12L/30R)  \u00b7  LAS APP/DEP 119.4  \u00b7  UNICOM 122.95",
+    "verified": "2026-09-12",
+    "_manual_additions": "TWR 119.15 is in the FAA Chart Supplement but missing from OurAirports. Re-add it after any refresh."
+  },
+  "bottom_band": "frequencies"
+}

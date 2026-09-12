@@ -1,0 +1,5 @@
+firmware/n3005q_board/config.h
+firmware/.pio/
+__pycache__/
+*.pyc
+.venv/

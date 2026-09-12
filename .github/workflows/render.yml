@@ -1,0 +1,67 @@
+name: render card
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["render/**", ".github/workflows/render.yml"]
+
+concurrency:
+  group: render
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: render/requirements.txt
+
+      - run: pip install -r render/requirements.txt
+
+      - name: Render card
+        env:
+          N3005Q_OUT: public
+          FAA_CLIENT_ID: ${{ secrets.FAA_CLIENT_ID }}
+          FAA_CLIENT_SECRET: ${{ secrets.FAA_CLIENT_SECRET }}
+        run: python render/render.py
+
+      - name: Verify before publishing
+        working-directory: render
+        env:
+          N3005Q_CARD: ../public/card.png
+        run: python verify.py
+
+      - name: Skip if unchanged
+        id: changed
+        run: |
+          git fetch --depth=1 origin output || true
+          if git cat-file -e origin/output:public/card.png 2>/dev/null; then
+            git show origin/output:public/card.png > /tmp/prev.png
+            if cmp -s /tmp/prev.png public/card.png; then
+              echo "identical render, nothing to publish"
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - name: Publish to output branch
+        if: steps.changed.outputs.skip != 'true'
+        run: |
+          git config user.name  "n3005q-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan publish
+          git reset
+          git add -f public vercel.json
+          git commit -q -m "render $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push -f origin publish:output
