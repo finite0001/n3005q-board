@@ -221,11 +221,23 @@ static FetchResult fetchCard() {
 
 // ---------------------------------------------------------------- main
 void setup() {
+  Serial.begin(115200);
+#ifdef BOOT_TRACE
+  delay(6000);                   // let the host reattach to USB after reset
+  Serial.println("TRACE serial up");
+#endif
   auto cfg = M5.config();
   cfg.clear_display = false;     // never flash the panel white on boot
   M5.begin(cfg);
+#ifdef BOOT_TRACE
+  Serial.printf("TRACE M5.begin done, board %d, display %dx%d rot %d\n",
+                (int)M5.getBoard(), M5.Display.width(), M5.Display.height(),
+                M5.Display.getRotation());
+#endif
   M5.Display.setRotation(DISPLAY_ROTATION);
-  Serial.begin(115200);
+#ifdef BOOT_TRACE
+  Serial.println("TRACE setRotation done");
+#endif
   rtcWakeCount++;
   Serial.printf("\n=== wake %u (fails %u) ===\n", rtcWakeCount, rtcFailCount);
   Serial.printf("display %dx%d rotation %d\n", M5.Display.width(),
