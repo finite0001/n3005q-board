@@ -228,6 +228,8 @@ void setup() {
   Serial.begin(115200);
   rtcWakeCount++;
   Serial.printf("\n=== wake %u (fails %u) ===\n", rtcWakeCount, rtcFailCount);
+  Serial.printf("display %dx%d rotation %d\n", M5.Display.width(),
+                M5.Display.height(), M5.Display.getRotation());
 
   if (!connectWifi()) {
     rtcFailCount++;
