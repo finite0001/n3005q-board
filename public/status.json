@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-09-15T22:59:33+00:00",
+  "metar_obs": "2026-09-15T22:53:00+00:00",
+  "metar_raw": "METAR KVGT 152253Z 19014G25KT 10SM FEW100 36/13 A2979 RMK AO2 PK WND 22028/2226 SLP076 T03610128",
+  "flight_category": "VFR",
+  "density_alt_ft": 3362,
+  "pressure_alt_ft": 793,
+  "peak_da_ft": 3363,
+  "peak_da_local": "2026-09-15T16:00-07:00",
+  "favored_runway": "12",
+  "favored_crosswind_kt": 11.6,
+  "tfr_count": 7,
+  "notam_count": null,
+  "errors": []
+}
