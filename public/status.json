@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-09-19T13:34:38+00:00",
+  "metar_obs": "2026-09-19T12:53:00+00:00",
+  "metar_raw": "METAR KVGT 191253Z 33012KT 10SM CLR 23/M06 A2995 RMK AO2 SLP133 T02331056",
+  "flight_category": "VFR",
+  "density_alt_ft": 1763,
+  "pressure_alt_ft": 633,
+  "peak_da_ft": 3004,
+  "peak_da_local": "2026-09-19T17:00-07:00",
+  "favored_runway": "30",
+  "favored_crosswind_kt": 3.3,
+  "tfr_count": 3,
+  "notam_count": null,
+  "errors": []
+}
