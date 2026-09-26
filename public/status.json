@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-09-26T17:50:28+00:00",
+  "metar_obs": "2026-09-26T16:53:00+00:00",
+  "metar_raw": "METAR KVGT 261653Z 16010KT 10SM CLR 31/03 A2996 RMK AO2 SLP135 T03060033",
+  "flight_category": "VFR",
+  "density_alt_ft": 2572,
+  "pressure_alt_ft": 624,
+  "peak_da_ft": 3054,
+  "peak_da_local": "2026-09-26T16:00-07:00",
+  "favored_runway": "12",
+  "favored_crosswind_kt": 4.4,
+  "tfr_count": 2,
+  "notam_count": null,
+  "errors": []
+}
