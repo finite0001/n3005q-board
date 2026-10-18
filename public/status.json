@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-10-18T01:07:37+00:00",
+  "metar_obs": "2026-10-18T00:53:00+00:00",
+  "metar_raw": "METAR KVGT 180053Z 18003KT 10SM OVC100 23/M02 A3012 RMK AO2 SLP202 T02281022",
+  "flight_category": "VFR",
+  "density_alt_ft": 1513,
+  "pressure_alt_ft": 462,
+  "peak_da_ft": 1638,
+  "peak_da_local": "2026-10-17T18:00-07:00",
+  "favored_runway": "12",
+  "favored_crosswind_kt": 2.2,
+  "tfr_count": 1,
+  "notam_count": null,
+  "errors": []
+}
