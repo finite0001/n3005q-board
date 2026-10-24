@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-10-24T22:03:14+00:00",
+  "metar_obs": "2026-10-24T21:53:00+00:00",
+  "metar_raw": "METAR KVGT 242153Z 06008G19KT 10SM FEW080 FEW120 23/03 A2995 RMK AO2 SLP144 T02330028",
+  "flight_category": "VFR",
+  "density_alt_ft": 1763,
+  "pressure_alt_ft": 633,
+  "peak_da_ft": 1830,
+  "peak_da_local": "2026-10-24T17:00-07:00",
+  "favored_runway": "07",
+  "favored_crosswind_kt": 3.8,
+  "tfr_count": 0,
+  "notam_count": null,
+  "errors": []
+}
