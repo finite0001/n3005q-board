@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-11-24T18:32:05+00:00",
+  "metar_obs": "2026-11-24T17:53:00+00:00",
+  "metar_raw": "METAR KVGT 241753Z 18003KT 10SM CLR 12/M02 A3033 RMK AO2 SLP288 T01221022 10122 20056 50007",
+  "flight_category": "VFR",
+  "density_alt_ft": 38,
+  "pressure_alt_ft": 252,
+  "peak_da_ft": 567,
+  "peak_da_local": "2026-11-24T15:00-08:00",
+  "favored_runway": "12",
+  "favored_crosswind_kt": 2.2,
+  "tfr_count": 0,
+  "notam_count": null,
+  "errors": []
+}
